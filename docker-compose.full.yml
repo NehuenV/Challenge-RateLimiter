@@ -1,0 +1,33 @@
+# Uso para despliegue completo (Redis + API en contenedores):
+#   docker-compose -f docker-compose.full.yml up --build
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: rate-limiter-redis
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: src/RateLimiter/Dockerfile
+    container_name: rate-limiter-api
+    ports:
+      - "8080:8080"
+    environment:
+      # Las variables de entorno sobreescriben appsettings.json.
+      # La sintaxis __ (doble guión bajo) mapea a secciones anidadas del config.
+      - RateLimiter__Store=Redis
+      - RateLimiter__RedisConnection=redis:6379,connectTimeout=1000,syncTimeout=500
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  redis-data:

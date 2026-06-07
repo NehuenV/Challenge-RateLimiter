@@ -1,0 +1,15 @@
+# Ejecuta los tests sin necesidad de tener .NET SDK instalado — solo requiere Docker.
+#
+# Uso:
+#   docker-compose -f docker-compose.tests.yml up --build --exit-code-from tests
+#
+# --exit-code-from tests  propaga el exit code del contenedor al shell:
+#                         exit 0 si todos los tests pasan, exit 1 si alguno falla.
+#
+# Los tests de Redis se excluyen (requieren una instancia de Redis corriendo).
+
+services:
+  tests:
+    build:
+      context: .
+      dockerfile: Dockerfile.tests

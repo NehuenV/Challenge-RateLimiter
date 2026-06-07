@@ -1,0 +1,55 @@
+@host = http://localhost:5000
+
+### ──────────────────────────────────────────
+### Health — sin rate limiting
+### ──────────────────────────────────────────
+
+GET {{host}}/health
+
+###
+
+### ──────────────────────────────────────────
+### Endpoint estándar — 10 tokens, 1/seg
+### Ejecutar varias veces para ver cómo bajan los tokens en X-RateLimit-Remaining
+### ──────────────────────────────────────────
+
+GET {{host}}/api/test
+Accept: application/json
+
+###
+
+### ──────────────────────────────────────────
+### Endpoint estricto — 3 tokens, 0.5/seg
+### Ejecutar 4 veces seguidas para provocar un 429
+### ──────────────────────────────────────────
+
+GET {{host}}/api/test/strict
+Accept: application/json
+
+###
+
+### ──────────────────────────────────────────
+### Swagger — documentación interactiva
+### ──────────────────────────────────────────
+
+GET {{host}}/swagger/v1/swagger.json
+Accept: application/json
+
+###
+
+### ──────────────────────────────────────────
+### Limitar por API Key (requiere cambiar IKeyExtractor en Program.cs)
+### Con X-Api-Key cada cliente tiene su propio bucket independiente
+### ──────────────────────────────────────────
+
+GET {{host}}/api/test
+Accept: application/json
+X-Api-Key: cliente-a
+
+###
+
+GET {{host}}/api/test
+Accept: application/json
+X-Api-Key: cliente-b
+
+###

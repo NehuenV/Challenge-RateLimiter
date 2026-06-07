@@ -1,0 +1,15 @@
+# Uso sin .NET SDK ni Redis — solo requiere Docker:
+#   docker-compose -f docker-compose.memory.yml up --build
+#   API disponible en http://localhost:8080/swagger
+
+services:
+  api:
+    build:
+      context: .
+      dockerfile: src/RateLimiter/Dockerfile
+    container_name: rate-limiter-api
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - RateLimiter__Store=Memory

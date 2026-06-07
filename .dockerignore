@@ -1,0 +1,31 @@
+# Control de versiones
+.git
+.gitignore
+.gitattributes
+
+# IDEs
+.vs
+.idea
+*.user
+*.DotSettings.user
+
+# Outputs de build (se regeneran dentro del contenedor)
+**/bin
+**/obj
+
+# Tests (no necesarios en la imagen de producción)
+tests/
+
+# Documentación y herramientas de desarrollo
+*.md
+*.http
+DESIGN.md
+README.md
+
+# Docker (no copiar archivos de infraestructura dentro del build de producción)
+docker-compose*.yml
+Dockerfile.tests
+
+# Sistema operativo
+.DS_Store
+Thumbs.db

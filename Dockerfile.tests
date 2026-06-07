@@ -1,0 +1,19 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0-alpine
+
+WORKDIR /app
+
+# Copiar primero solo los archivos de proyecto para aprovechar el cache de layers.
+# Si solo cambia el código fuente, el restore no se repite en rebuilds posteriores.
+COPY NuGet.config .
+COPY src/RateLimiter/RateLimiter.csproj             src/RateLimiter/
+COPY tests/RateLimiter.Tests/RateLimiter.Tests.csproj tests/RateLimiter.Tests/
+RUN dotnet restore tests/RateLimiter.Tests/RateLimiter.Tests.csproj
+
+COPY src/   src/
+COPY tests/ tests/
+
+# Los tests de Redis requieren una instancia real — se excluyen en este modo standalone.
+CMD dotnet test tests/RateLimiter.Tests/RateLimiter.Tests.csproj \
+    --no-restore \
+    --filter "Category!=Redis" \
+    --logger "console;verbosity=normal"

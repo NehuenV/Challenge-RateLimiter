@@ -1,0 +1,22 @@
+# Uso para desarrollo local:
+#   docker-compose up -d
+#   → levanta Redis en localhost:6379
+#   → cambiar appsettings.json: "Store": "Redis"
+#   → dotnet run
+
+services:
+  redis:
+    image: redis:7-alpine
+    container_name: rate-limiter-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+volumes:
+  redis-data:
