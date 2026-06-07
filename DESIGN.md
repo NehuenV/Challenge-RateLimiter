@@ -93,9 +93,16 @@ tenga buckets independientes por endpoint.
 
 Un `SemaphoreSlim` por cliente crea un lock por cada IP que llega — con IPs rotativas
 se convierte en un memory leak. La solución es un pool fijo de N semáforos (configurable,
-default 64). Cada clave se hashea a un slot: `Math.Abs(key.GetHashCode()) % N`. Dos
-claves pueden compartir slot (colisión de hash), lo que reduce levemente la concurrencia
-pero nunca afecta la corrección.
+default 64). Cada clave se hashea a un slot con la expresión:
+
+```csharp
+(key.GetHashCode() & int.MaxValue) % _locks.Length
+```
+
+Se usa `& int.MaxValue` en lugar de `Math.Abs` porque `Math.Abs(int.MinValue)` lanza
+`OverflowException` — `-(-2.147.483.648)` desborda el rango de `int`. La máscara de bits
+elimina el bit de signo sin riesgo de overflow. Dos claves pueden compartir slot (colisión
+de hash), lo que reduce levemente la concurrencia pero nunca afecta la corrección.
 
 ### Atomicidad en Redis: Script Lua
 
@@ -181,6 +188,47 @@ Alpine reduce el peso de la imagen final de ~220MB a ~100MB y achica la superfic
 al incluir solo los componentes mínimos del sistema operativo, lo que reduce la cantidad de
 vulnerabilidades potenciales que un escáner de seguridad podría encontrar.
 
+### Validación defensiva en startup
+
+El sistema falla rápido ante configuraciones inválidas en lugar de producir errores
+en runtime difíciles de diagnosticar:
+
+**`RateLimitRule`** — el constructor valida en construcción:
+- `Name` no puede ser vacío
+- `Capacity` debe ser > 0
+- `RefillRate` debe ser > 0 (un valor de 0 causa división por cero en `RetryAfterSeconds`
+  y en el TTL de expiración del caché)
+
+**`RateLimiterMiddleware`** — el constructor valida que no haya PathPrefixes duplicados
+y lanza `InvalidOperationException` al arrancar. Un duplicado silencioso dejaría un
+endpoint sin protección o con la regla equivocada.
+
+### Capeado de expiración en `InMemoryBucketStore`
+
+La expiración de cada bucket se calcula como `Capacity / RefillRate * 2`. Con un
+`RefillRate` extremadamente pequeño (ej: 0.0000001), este cálculo produce una expiración
+de años — la entrada nunca se liberaría de memoria.
+
+Se capea a **24 horas** como máximo: tiempo más que suficiente para cualquier bucket
+real. Con ese `RefillRate` el cliente tampoco podría usar la aplicación (recuperaría
+1 token cada ~115 días), lo que hace el escenario autolimitante — pero la memoria
+queda protegida de todos modos.
+
+### Métricas con OpenTelemetry y Prometheus
+
+`RateLimiterMetrics` expone dos instrumentos usando `System.Diagnostics.Metrics` (.NET nativo):
+
+- `rate_limiter.requests` — `Counter<long>` con tags `{rule, result}`.
+  Permite queries como `rate(rate_limiter_requests_total{result="denied"}[5m])`.
+- `rate_limiter.tokens_remaining` — `Histogram<double>` de tokens disponibles al momento
+  del request. Útil para detectar reglas sobredimensionadas o demasiado ajustadas.
+
+OpenTelemetry actúa como listener y los expone en `/metrics` en formato Prometheus.
+Compatible con Grafana, Datadog y cualquier scraper OpenTelemetry.
+
+El exporter (`OpenTelemetry.Exporter.Prometheus.AspNetCore`) está en beta — la
+instrumentación con `System.Diagnostics.Metrics` es estable; solo el endpoint HTTP es beta.
+
 ### Reglas duplicadas
 
 El constructor de `RateLimiterMiddleware` valida que no haya PathPrefixes duplicados en
@@ -209,11 +257,11 @@ consistencia si se agregan nuevas rutas. Los endpoints del controller usan XML d
 
 | Suite | Tests | Tipo | Sin infraestructura |
 |---|---|---|---|
-| `TokenBucketTests` | 10 | Unitarios del algoritmo puro | ✅ |
-| `InMemoryBucketStoreTests` | 8 | Integración incluyendo concurrencia y MaxEntries | ✅ |
-| `ResilientBucketStoreTests` | 5 | Comportamiento del circuit breaker y fallo total | ✅ |
+| `TokenBucketTests` | 13 | Algoritmo puro + validación de `RateLimitRule` | ✅ |
+| `InMemoryBucketStoreTests` | 8 | Concurrencia, MaxEntries, expiración | ✅ |
+| `ResilientBucketStoreTests` | 5 | Circuit breaker y fallo total | ✅ |
 | `MiddlewareTests` | 11 | E2E con `WebApplicationFactory` | ✅ |
-| **Total** | **34** | | |
+| **Total** | **37** | | |
 
 Los tests de Redis (`RedisBucketStore`) requieren Docker y se pueden excluir:
 ```

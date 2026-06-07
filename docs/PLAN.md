@@ -107,6 +107,8 @@ rate-limiter/
 │       │   ├── IKeyExtractor.cs
 │       │   ├── RemoteIpKeyExtractor.cs     ← default
 │       │   └── HeaderKeyExtractor.cs
+│       ├── Metrics/
+│       │   └── RateLimiterMetrics.cs      ← Counter + Histogram via System.Diagnostics.Metrics
 │       ├── Swagger/
 │       │   └── RateLimitHeadersFilter.cs  ← agrega headers X-RateLimit-* a todos los endpoints
 │       ├── Controllers/
@@ -360,7 +362,7 @@ y `{Remaining}` cubren el requerimiento — son queryables en cualquier sistema 
 | `RateLimiterMiddleware` — 429, headers, jitter, PathPrefix, duplicados | Integración (WebApplicationFactory) | No |
 | `RedisBucketStore` — operación atómica | Integración | Sí (Docker) |
 
-**Total: 34 tests — todos pasan sin Docker**
+**Total: 37 tests — todos pasan sin Docker**
 
 Los tests de Redis se marcan con `[Trait("Category", "Redis")]` y se pueden excluir
 con `dotnet test --filter "Category!=Redis"`.

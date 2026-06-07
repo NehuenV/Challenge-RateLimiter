@@ -78,7 +78,7 @@ La API queda en `http://localhost:5000/swagger` conectada a Redis en `localhost:
 docker-compose -f docker-compose.tests.yml up --build --exit-code-from tests
 ```
 
-Buildea un contenedor con el SDK, corre los 34 tests y muestra el resultado en consola.
+Buildea un contenedor con el SDK, corre los 37 tests y muestra el resultado en consola.
 `--exit-code-from tests` propaga el exit code del contenedor al shell — exit 1 si algún test falla.
 
 ### Con .NET SDK instalado
@@ -95,6 +95,20 @@ Con la API corriendo, abrí `http://localhost:5000/swagger` en el browser.
 
 Desde ahí podés ejecutar requests directamente y ver los headers `X-RateLimit-*` en las
 respuestas. Los endpoints limitados muestran la respuesta `429` con su descripción y headers.
+
+---
+
+## Métricas (Prometheus / OpenTelemetry)
+
+Con la API corriendo, `/metrics` expone las métricas en formato Prometheus:
+
+```
+rate_limiter_requests_total{rule="default-rule",result="allowed"} 47
+rate_limiter_requests_total{rule="strict-rule",result="denied"}   12
+rate_limiter_tokens_remaining_sum{rule="default-rule"}            312.5
+```
+
+Compatible con Prometheus, Grafana y cualquier scraper OpenTelemetry.
 
 ---
 
