@@ -10,8 +10,8 @@ y jitter en Retry-After.
 
 ## Requisitos
 
-- [.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8)
-- [Docker](https://www.docker.com/) *(solo para el modo Redis)*
+- **[Docker](https://www.docker.com/) — mínimo requerido.** Cubre la API, los tests y el modo Redis sin necesitar nada más instalado.
+- **[.NET 8 SDK](https://dotnet.microsoft.com/download/dotnet/8) — opcional.** Solo necesario si querés correr la API o los tests directamente en tu máquina (Opciones C y D).
 
 ---
 
