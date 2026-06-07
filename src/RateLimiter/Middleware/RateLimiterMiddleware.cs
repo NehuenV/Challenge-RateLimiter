@@ -1,15 +1,17 @@
 using RateLimiter.Config;
 using RateLimiter.KeyExtraction;
+using RateLimiter.Metrics;
 using RateLimiter.Storage;
 
 namespace RateLimiter.Middleware;
 
 public sealed partial class RateLimiterMiddleware
 {
-    private readonly RequestDelegate _next;
-    private readonly IBucketStore    _store;
-    private readonly IKeyExtractor   _keyExtractor;
-    private readonly double          _jitterMaxSeconds;
+    private readonly RequestDelegate    _next;
+    private readonly IBucketStore       _store;
+    private readonly IKeyExtractor      _keyExtractor;
+    private readonly double             _jitterMaxSeconds;
+    private readonly RateLimiterMetrics _metrics;
     private readonly ILogger<RateLimiterMiddleware> _logger;
 
     // Las reglas se ordenan por longitud de PathPrefix descendente para que la
@@ -21,12 +23,14 @@ public sealed partial class RateLimiterMiddleware
         IBucketStore store,
         IKeyExtractor keyExtractor,
         RateLimiterOptions options,
+        RateLimiterMetrics metrics,
         ILogger<RateLimiterMiddleware> logger)
     {
         _next             = next;
         _store            = store;
         _keyExtractor     = keyExtractor;
         _jitterMaxSeconds = options.JitterMaxSeconds;
+        _metrics          = metrics;
         _logger           = logger;
 
         // Falla en el arranque si hay PathPrefixes duplicados.
@@ -81,10 +85,13 @@ public sealed partial class RateLimiterMiddleware
             context.Response.Headers["X-RateLimit-Retry-After"] = retryAfter.ToString();
             context.Response.StatusCode = StatusCodes.Status429TooManyRequests;
             LimiteSuperado(_logger, clientKey, rule.Name, retryAfter);
+            _metrics.RequestDenegado(rule.Name);
             return;
         }
 
-        RequestPermitido(_logger, clientKey, rule.Name, Math.Round(decision.RemainingTokens, 2));
+        var remaining = Math.Round(decision.RemainingTokens, 2);
+        RequestPermitido(_logger, clientKey, rule.Name, remaining);
+        _metrics.RequestPermitido(rule.Name, remaining);
         await _next(context);
     }
 

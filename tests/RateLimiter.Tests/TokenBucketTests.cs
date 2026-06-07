@@ -6,7 +6,7 @@ namespace RateLimiter.Tests;
 
 public class TokenBucketTests
 {
-    private static readonly RateLimitRule Rule = new("test", Capacity: 5, RefillRate: 1.0);
+    private static readonly RateLimitRule Rule = new("test", capacity: 5, refillRate: 1.0);
 
     [Fact]
     public void PrimerRequest_BucketLleno_SePermite()
@@ -136,5 +136,35 @@ public class TokenBucketTests
         d2.Allowed.Should().BeTrue();
         d3.Allowed.Should().BeTrue();
         d4.Allowed.Should().BeFalse();
+    }
+
+    // ── Validación de RateLimitRule ──────────────────────────────────────────
+
+    [Fact]
+    public void Regla_ConRefillRateCero_LanzaExcepcion()
+    {
+        // RefillRate = 0 causa división por cero en RetryAfterSeconds y en el TTL del caché
+        var act = () => new RateLimitRule("test", capacity: 5, refillRate: 0);
+
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage("*RefillRate*");
+    }
+
+    [Fact]
+    public void Regla_ConCapacidadCero_LanzaExcepcion()
+    {
+        var act = () => new RateLimitRule("test", capacity: 0, refillRate: 1);
+
+        act.Should().Throw<ArgumentOutOfRangeException>()
+            .WithMessage("*Capacity*");
+    }
+
+    [Fact]
+    public void Regla_ConNombreVacio_LanzaExcepcion()
+    {
+        var act = () => new RateLimitRule("", capacity: 5, refillRate: 1);
+
+        act.Should().Throw<ArgumentException>()
+            .WithMessage("*nombre*");
     }
 }

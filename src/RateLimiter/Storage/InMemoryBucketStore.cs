@@ -12,6 +12,9 @@ public sealed class InMemoryBucketStore : IBucketStore
     private readonly int             _maxEntries;
     private int                      _entryCount;
 
+    // maximo de tiempo que permanece un bucket en cache
+    private static readonly TimeSpan _maxExpiration = TimeSpan.FromHours(24);
+
     public InMemoryBucketStore(IMemoryCache cache, TimeProvider time, RateLimiterOptions options)
     {
         _cache      = cache;
@@ -49,7 +52,9 @@ public sealed class InMemoryBucketStore : IBucketStore
 
             var decision   = TokenBucket.Evaluate(current, rule, nowMs);
 
-            var expiration = TimeSpan.FromSeconds(rule.Capacity / rule.RefillRate * 2);
+            var rawExpiration = TimeSpan.FromSeconds(rule.Capacity / rule.RefillRate * 2);
+            //si el tiempo de expiracion calculado es mas grande que 24h se fija 24h como valor
+            var expiration    = rawExpiration < _maxExpiration ? rawExpiration : _maxExpiration;
             var cacheOptions = new MemoryCacheEntryOptions
             {
                 SlidingExpiration = expiration,

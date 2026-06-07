@@ -1,8 +1,10 @@
 using System.Reflection;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.OpenApi.Models;
+using OpenTelemetry.Metrics;
 using RateLimiter.Config;
 using RateLimiter.KeyExtraction;
+using RateLimiter.Metrics;
 using RateLimiter.Middleware;
 using RateLimiter.Storage;
 using RateLimiter.Swagger;
@@ -45,6 +47,14 @@ builder.Services.AddSwaggerGen(c =>
 builder.Services.AddSingleton(options);
 builder.Services.AddSingleton(TimeProvider.System);
 builder.Services.AddSingleton<IKeyExtractor, RemoteIpKeyExtractor>();
+builder.Services.AddSingleton<RateLimiterMetrics>();
+
+// OpenTelemetry: escucha el Meter "RateLimiter" y expone /metrics para Prometheus.
+// El exporter está en beta pero la instrumentación (System.Diagnostics.Metrics) es estable.
+builder.Services.AddOpenTelemetry()
+    .WithMetrics(m => m
+        .AddMeter(RateLimiterMetrics.MeterName)
+        .AddPrometheusExporter());
 
 // configuramos el limite maximo del cache 
 builder.Services.AddMemoryCache(o => o.SizeLimit = options.InMemory.MaxEntries);
@@ -86,6 +96,10 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }))
    .WithTags("Health")
    .WithSummary("Estado del servicio — sin rate limiting");
+
+// Expone las métricas en formato Prometheus en /metrics.
+// Compatible con Prometheus, Grafana y cualquier scraper OpenTelemetry.
+app.MapPrometheusScrapingEndpoint();
 
 app.Run();
 

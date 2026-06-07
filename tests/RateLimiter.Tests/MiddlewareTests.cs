@@ -1,8 +1,10 @@
+using System.Diagnostics.Metrics;
 using System.Net;
 using FluentAssertions;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.Extensions.DependencyInjection;
 using RateLimiter.Config;
+using RateLimiter.Metrics;
 using RateLimiter.Storage;
 
 namespace RateLimiter.Tests;
@@ -245,10 +247,18 @@ public class MiddlewareTests : IClassFixture<WebApplicationFactory<Program>>
             new StoreStub(),
             new RateLimiter.KeyExtraction.RemoteIpKeyExtractor(),
             opciones,
+            new RateLimiterMetrics(new TestMeterFactory()),
             Microsoft.Extensions.Logging.Abstractions.NullLogger<RateLimiter.Middleware.RateLimiterMiddleware>.Instance);
         //validamos que falle para no tener un comportamiento inesperado
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*duplicado*");
+    }
+
+    private sealed class TestMeterFactory : IMeterFactory
+    {
+        public Meter Create(MeterOptions options) =>
+            new(options.Name, options.Version, options.Tags, scope: this);
+        public void Dispose() { }
     }
 
     private sealed class StoreStub : RateLimiter.Storage.IBucketStore

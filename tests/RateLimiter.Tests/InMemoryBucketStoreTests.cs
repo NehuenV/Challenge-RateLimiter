@@ -8,7 +8,7 @@ namespace RateLimiter.Tests;
 
 public class InMemoryBucketStoreTests
 {
-    private static readonly RateLimitRule Rule = new("test", Capacity: 5, RefillRate: 1.0);
+    private static readonly RateLimitRule Rule = new("test", capacity: 5, refillRate: 1.0);
 
     private static readonly RateLimiterOptions Opciones = new()
     {
