@@ -28,8 +28,10 @@ public sealed class InMemoryBucketStore : IBucketStore
 
     public async Task<BucketDecision> GetAndUpdateAsync(string key, RateLimitRule rule)
     {
-        //metodo matematico para calcular en base al hash y el modulo que lock le toca
-        var slot = Math.Abs(key.GetHashCode()) % _locks.Length;
+        // & int.MaxValue elimina el bit de signo sin riesgo de overflow.
+        // Math.Abs(int.MinValue) lanzaría OverflowException porque -(-2.147.483.648)
+        // desborda el rango de int.
+        var slot = (key.GetHashCode() & int.MaxValue) % _locks.Length;
         var sem  = _locks[slot];
 
         await sem.WaitAsync();
